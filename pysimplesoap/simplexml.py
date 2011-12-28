@@ -17,10 +17,13 @@ __copyright__ = "Copyright (C) 2008/009 Mariano Reingart"
 __license__ = "LGPL 3.0"
 __version__ = "1.02d"
 
+import logging
 import xml.dom.minidom
 from decimal import Decimal
 import datetime 
 import time
+
+log = logging.getLogger(__name__)
 
 DEBUG = False
 
@@ -127,7 +130,7 @@ class SimpleXMLElement(object):
             try:
                 self.__document = xml.dom.minidom.parseString(text)
             except:
-                if DEBUG: print text
+                log.error(text)
                 raise
             self.__elements = [self.__document.documentElement]
         else:
@@ -137,10 +140,10 @@ class SimpleXMLElement(object):
     def add_child(self,name,text=None,ns=True):
         "Adding a child tag to a node"
         if not ns or not self.__ns:
-            if DEBUG: print "adding %s" % (name)
+            log.debug('adding %s', name)
             element = self.__document.createElement(name)
         else:
-            if DEBUG: print "adding %s ns %s %s" % (name, self.__ns,ns)
+            log.debug('adding %s ns "%s" %s', name, self.__ns, ns)
             if self.__prefix:
                 element = self.__document.createElementNS(self.__ns, "%s:%s" % (self.__prefix, name))
             else:
@@ -163,7 +166,7 @@ class SimpleXMLElement(object):
         if tag.startswith("_"):
             object.__setattr__(self, tag, text)
         else:
-            if DEBUG: print "__setattr__(%s,%s)" % (tag, text)
+            log.debug('__setattr__(%s, %s)', tag, text)
             self.add_child(tag,text)
 
     def __delattr__(self, tag):
@@ -222,7 +225,7 @@ class SimpleXMLElement(object):
 
     def __getitem__(self, item):
         "Return xml tag attribute value or a slice of attributes (iter)"
-        if DEBUG: print "__getitem__(%s)" % item 
+        log.debug('__getitem__(%s)', item)
         if isinstance(item,basestring):
             if self._element.hasAttribute(item):
                 return self._element.attributes[item].value
@@ -266,18 +269,18 @@ class SimpleXMLElement(object):
                 elements=[self.__elements[tag]]
             if ns and not elements:
                 for ns_uri in isinstance(ns, (tuple, list)) and ns or (ns, ):
-                    if DEBUG: print "searching %s by ns=%s" % (tag,ns_uri)
+                    log.debug('searching %s by ns=%s', tag, ns_uri)
                     elements = self._element.getElementsByTagNameNS(ns_uri, tag)
                     if elements: 
                         break
             if self.__ns and not elements:
-                if DEBUG: print "searching %s by ns=%s" % (tag, self.__ns)
+                log.debug('searching %s by ns=%s', tag, self.__ns)
                 elements = self._element.getElementsByTagNameNS(self.__ns, tag)
             if not elements:
-                if DEBUG: print "searching %s " % (tag)
+                log.debug('searching %s', tag)
                 elements = self._element.getElementsByTagName(tag)
             if not elements:
-                if DEBUG: print self._element.toxml()
+                log.debug(self._element.toxml())
                 if error:
                     raise AttributeError(u"No elements found")
                 else:
@@ -446,25 +449,3 @@ class SimpleXMLElement(object):
         x = self.__document.importNode(other._element, True)  # deep copy
         self._element.appendChild(x)
 
-
-if __name__ == "__main__":
-    # issue 32 test case
-    assert datetime_u('2011-11-24T20:08:53') == datetime.datetime(2011, 11, 24, 20, 8, 53)
-    assert datetime_u('2011-11-24T20:08:53.000-03:00') == datetime.datetime(2011, 11, 24, 20, 8, 53)
-    
-    # sample tests:
-    span = SimpleXMLElement('<span><a href="python.org.ar">pyar</a><prueba><i>1</i><float>1.5</float></prueba></span>')
-    assert str(span.a)==str(span('a'))==str(span.a(0))=="pyar"
-    assert span.a['href']=="python.org.ar"
-    assert int(span.prueba.i)==1 and float(span.prueba.float)==1.5
-    span1 = SimpleXMLElement('<span><a href="google.com">google</a><a>yahoo</a><a>hotmail</a></span>')
-    assert [str(a) for a in span1.a()] == ['google', 'yahoo', 'hotmail']
-    span1.add_child('a','altavista')
-    span1.b = "ex msn"
-    d = {'href':'http://www.bing.com/', 'alt': 'Bing'} 
-    span1.b[:] = d
-    assert sorted([(k,v) for k,v in span1.b[:]]) == sorted(d.items())
-    print span1.as_xml()
-    assert 'b' in span1
-    span.import_node(span1)
-    print span.as_xml()
