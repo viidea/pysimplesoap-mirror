@@ -52,7 +52,7 @@ else:
     class Httplib2Transport(httplib2.Http, TransportBase):
         _wrapper_version = "httplib2 %s" % httplib2.__version__
         _wrapper_name = 'httplib2'
-        def __init__(self, timeout, proxy=None, cacert=None, sessions=False):
+        def __init__(self, timeout, proxy=None, cacert=None, sessions=False, certssl=None, keyssl=None):
             ##httplib2.debuglevel=4
             kwargs = {}
             if proxy:
@@ -67,6 +67,9 @@ else:
                 kwargs['disable_ssl_certificate_validation'] = cacert is None
                 kwargs['ca_certs'] = cacert    
             httplib2.Http.__init__(self, **kwargs)
+            if certssl and keyssl:
+                log.debug("Setting up client SSL")
+                self.add_certificate(keyssl, certssl, "")
 
     _http_connectors['httplib2'] = Httplib2Transport
     _http_facilities.setdefault('proxy', []).append('httplib2')
@@ -83,7 +86,7 @@ import urllib2
 class urllib2Transport(TransportBase):
     _wrapper_version = "urllib2 %s" % urllib2.__version__
     _wrapper_name = 'urllib2' 
-    def __init__(self, timeout=None, proxy=None, cacert=None, sessions=False):
+    def __init__(self, timeout=None, proxy=None, cacert=None, sessions=False, certssl=None, keyssl=None):
         import sys
         if (timeout is not None) and not self.supports_feature('timeout'):
             raise RuntimeError('timeout is not supported with urllib2 transport')
@@ -91,6 +94,8 @@ class urllib2Transport(TransportBase):
             raise RuntimeError('proxy is not supported with urllib2 transport')
         if cacert:
             raise RuntimeError('cacert is not support with urllib2 transport')
+        if certssl or keyssl:
+            raise RuntimeError('certssl/keyssl is not supported with urllib2 transport')
 
         self.request_opener = urllib2.urlopen
         if sessions:
@@ -134,10 +139,12 @@ else:
     class pycurlTransport(TransportBase):
         _wrapper_version = pycurl.version
         _wrapper_name = 'pycurl'
-        def __init__(self, timeout, proxy=None, cacert=None, sessions=False):
+        def __init__(self, timeout, proxy=None, cacert=None, sessions=False, certssl=None, keyssl=None):
             self.timeout = timeout 
             self.proxy = proxy or {}
             self.cacert = cacert
+            if certssl or keyssl:
+                raise RuntimeError('certssl/keyssl is not supported with pycurl transport (yet)')
                
         def request(self, url, method, body, headers):
             c = pycurl.Curl()

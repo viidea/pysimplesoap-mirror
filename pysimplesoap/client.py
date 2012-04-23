@@ -63,12 +63,12 @@ _USE_GLOBAL_DEFAULT = object()
 class SoapClient(object):
     "Simple SOAP Client (simil PHP)"
     def __init__(self, location = None, action = None, namespace = None,
-                 cert = None, trace = False, exceptions = True, proxy = None, ns=False, 
+                 cert = None, key = None, trace = False, exceptions = True, proxy = None, ns=False, 
                  soap_ns=None, wsdl = None, cache = False, cacert=None,
                  sessions=False, soap_server=None, timeout=_USE_GLOBAL_DEFAULT,
                  ):
-        self.certssl = cert             
-        self.keyssl = None              
+        self.certssl = cert             # X509 public key
+        self.keyssl = key               # X509 private key
         self.location = location        # server location (url)
         self.action = action            # SOAP base action
         self.namespace = namespace      # message 
@@ -106,7 +106,7 @@ class SoapClient(object):
 
         # Create HTTP wrapper
         Http = get_Http()
-        self.http = Http(timeout=timeout, cacert=cacert, proxy=proxy, sessions=sessions)
+        self.http = Http(timeout=timeout, cacert=cacert, proxy=proxy, sessions=sessions, certssl=cert, keyssl=key)
                 
         self.__ns = ns # namespace prefix or False to not use it
         if not ns:
